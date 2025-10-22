@@ -1,0 +1,46 @@
+name: Daily TikTok Videos
+on:
+  schedule:
+    - cron: '0 12 * * *'  # 12:00 UTC =~ 09:00 BRT
+  workflow_dispatch:
+
+jobs:
+  build-and-run:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install system deps (ffmpeg)
+        run: sudo apt-get update && sudo apt-get install -y ffmpeg
+
+      - name: Install Python deps
+        working-directory: python
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Restore GCP key file
+        working-directory: python
+        env:
+          GCP_KEY_JSON: ${{ secrets.GCP_KEY_JSON }}
+        run: |
+          echo "$GCP_KEY_JSON" > key.json
+          echo "GOOGLE_APPLICATION_CREDENTIALS=$(pwd)/key.json" >> $GITHUB_ENV
+
+      - name: Run daily generator (10 videos x 7 languages)
+        working-directory: python
+        env:
+          SERPAPI_KEY: ${{ secrets.SERPAPI_KEY }}
+          PEXELS_KEY: ${{ secrets.PEXELS_KEY }}
+          TIKTOK_ACCESS_TOKEN: ${{ secrets.TIKTOK_ACCESS_TOKEN }}
+          TIKTOK_OPEN_ID: ${{ secrets.TIKTOK_OPEN_ID }}
+          ENABLE_TIKTOK_UPLOAD: ${{ secrets.ENABLE_TIKTOK_UPLOAD }}
+          TRENDS_REGION: BR
+        run: |
+          python main.py
