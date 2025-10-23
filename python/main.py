@@ -1,75 +1,22 @@
-import os, pathlib, time, json, re
+import os, pathlib, time, json, re, shutil
 from trends import top_topics_week
 from script_writer import build_script
-from media import pexels_images
+from media import pexels_images, clear_pexels_cache
 from video import build_video
 from translate import translate_text, LANGS
 from subtitles import srt_from_lines
-import hashlib
-from PIL import Image
-import io
 
 OUT = pathlib.Path(__file__).parent / "output"
 OUT.mkdir(exist_ok=True)
 
-def slug(s:str)->str:
+def slug(s: str) -> str:
     s = re.sub(r"[^\w\- ]+", "", s).strip().lower().replace(" ", "-")
     return s[:60] if s else "video"
 
-def convert_images_to_files(images: list, topic: str) -> list[str]:
-    """Converte qualquer formato de imagem para arquivos temporários."""
-    processed_images = []
-    temp_dir = OUT / "temp_images"
-    temp_dir.mkdir(exist_ok=True)
-    
-    for idx, img_data in enumerate(images):
-        try:
-            temp_path = temp_dir / f"{slug(topic)}_{idx}.jpg"
-            
-            if isinstance(img_data, (str, pathlib.Path)):
-                # Já é um caminho de arquivo - copia para temp
-                if os.path.exists(img_data):
-                    img = Image.open(img_data)
-                    img = img.convert('RGB')  # garante RGB
-                    img.save(temp_path, 'JPEG', quality=95)
-                    processed_images.append(str(temp_path))
-                else:
-                    print(f"  Aviso: arquivo não existe: {img_data}")
-                    
-            elif hasattr(img_data, 'read') or isinstance(img_data, (bytes, bytearray)):
-                # É BytesIO, bytes ou similar
-                if isinstance(img_data, (bytes, bytearray)):
-                    img_data = io.BytesIO(img_data)
-                
-                # Reset do ponteiro se necessário
-                if hasattr(img_data, 'seek'):
-                    img_data.seek(0)
-                
-                img = Image.open(img_data)
-                img = img.convert('RGB')  # garante RGB
-                img.save(temp_path, 'JPEG', quality=95)
-                processed_images.append(str(temp_path))
-                
-            elif isinstance(img_data, Image.Image):
-                # Já é PIL Image
-                img_data = img_data.convert('RGB')
-                img_data.save(temp_path, 'JPEG', quality=95)
-                processed_images.append(str(temp_path))
-                
-            else:
-                print(f"  Aviso: tipo de imagem desconhecido: {type(img_data)}")
-                
-        except Exception as e:
-            print(f"  Erro ao processar imagem {idx}: {e}")
-            import traceback
-            traceback.print_exc()
-    
-    return processed_images
-
-def generate_for_language(topic:str, lines:list[str], lang_code:str, images:list):
+def generate_for_language(topic: str, lines: list[str], lang_code: str, images: list[str]):
     """Gera vídeo para um idioma específico."""
     # traduz linhas
-    t_lines = [translate_text(x, lang_code) if lang_code!='pt' else x for x in lines]
+    t_lines = [translate_text(x, lang_code) if lang_code != 'pt' else x for x in lines]
     
     # paths
     lang_dir = OUT / lang_code.upper()
@@ -77,17 +24,8 @@ def generate_for_language(topic:str, lines:list[str], lang_code:str, images:list
     name = f"{slug(topic)}-{lang_code}.mp4"
     out_path = lang_dir / name
     
-    # Converte todas as imagens para arquivos
-    processed_images = convert_images_to_files(images, topic)
-    
-    if not processed_images:
-        print(f"  [{lang_code}] Nenhuma imagem processada com sucesso")
-        return None
-    
-    print(f"  [{lang_code}] {len(processed_images)} imagens prontas")
-    
-    # vídeo
-    build_video(processed_images, t_lines, str(out_path))
+    # vídeo (images já são caminhos de arquivo prontos)
+    build_video(images, t_lines, str(out_path))
     
     # srt
     srt = srt_from_lines(t_lines, dur_per_line=3.0)
@@ -108,55 +46,60 @@ def main():
     
     for idx, t in enumerate(selected, start=1):
         topic = t.get("title") or f"Topico-{idx}"
-        print(f"\n[topic {idx}/10] {topic}")
+        print(f"\n{'='*60}")
+        print(f"[{idx}/10] Processando: {topic}")
+        print('='*60)
         
         try:
+            # Gera script
             lines = build_script(topic)
             if not lines:
-                print("  -> Script vazio; pulando.")
-                continue
-                
-            images = pexels_images(topic, limit=5)
-            if not images:
-                print("  -> Sem imagens do Pexels; pulando.")
+                print("  ✗ Script vazio; pulando.")
                 continue
             
-            print(f"  -> {len(images)} imagens obtidas do Pexels")
+            print(f"  ✓ Script gerado: {len(lines)} linhas")
+            
+            # Busca imagens
+            images = pexels_images(topic, limit=5)
+            if not images:
+                print("  ✗ Sem imagens do Pexels; pulando.")
+                continue
+            
+            print(f"  ✓ {len(images)} imagens prontas")
             
             # Gera vídeo para cada idioma
             success_count = 0
-            for lang in ["pt","en","es","fr","it","de","zh"]:
+            failed_langs = []
+            
+            for lang in ["pt", "en", "es", "fr", "it", "de", "zh"]:
                 try:
                     out = generate_for_language(topic, lines, lang, images)
                     if out:
-                        print(f"  [{lang}] ✓ {out}")
+                        print(f"  ✓ [{lang.upper()}] {os.path.basename(out)}")
                         success_count += 1
                     else:
-                        print(f"  [{lang}] ✗ falhou")
+                        print(f"  ✗ [{lang.upper()}] Falhou")
+                        failed_langs.append(lang)
                 except Exception as e:
-                    print(f"  [{lang}] ✗ erro: {e}")
-                    import traceback
-                    traceback.print_exc()
+                    print(f"  ✗ [{lang.upper()}] Erro: {e}")
+                    failed_langs.append(lang)
             
-            print(f"  -> {success_count}/7 idiomas gerados com sucesso")
+            print(f"\n  Resumo: {success_count}/7 idiomas gerados")
+            if failed_langs:
+                print(f"  Falhas: {', '.join(failed_langs)}")
             
         except Exception as e:
-            print(f"  Erro geral no tópico '{topic}': {e}")
+            print(f"  ✗ Erro geral no tópico: {e}")
             import traceback
             traceback.print_exc()
     
-    # Limpa imagens temporárias
-    print("\nLimpando arquivos temporários...")
-    temp_dir = OUT / "temp_images"
-    if temp_dir.exists():
-        import shutil
-        try:
-            shutil.rmtree(temp_dir)
-            print("  -> Temporários removidos")
-        except Exception as e:
-            print(f"  -> Erro ao limpar temporários: {e}")
+    # Opcional: limpar cache de imagens ao final
+    # clear_pexels_cache()
     
-    print("\n✓ Concluído! Arquivos em ./python/output/")
+    print("\n" + "="*60)
+    print("✓ CONCLUÍDO!")
+    print(f"Arquivos salvos em: {OUT.absolute()}")
+    print("="*60)
 
 if __name__ == "__main__":
     main()
