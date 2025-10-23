@@ -28,7 +28,6 @@ def pexels_images(query: str, limit: int = 5) -> list[str]:
                 "query": query, 
                 "orientation": "portrait", 
                 "per_page": limit,
-                "size": "large"  # imagens grandes para melhor qualidade
             },
             timeout=10
         )
@@ -41,7 +40,7 @@ def pexels_images(query: str, limit: int = 5) -> list[str]:
         
         print(f"[pexels] {len(photos)} imagens encontradas para '{query}'")
         
-        # Cria diretório temporário para cache
+        # Cria diretório de cache
         cache_dir = pathlib.Path(__file__).parent / "output" / "pexels_cache"
         cache_dir.mkdir(parents=True, exist_ok=True)
         
@@ -50,47 +49,47 @@ def pexels_images(query: str, limit: int = 5) -> list[str]:
         # Baixa cada imagem
         for idx, photo in enumerate(photos):
             try:
-                # Pega URL da imagem em alta qualidade
+                # URL da imagem
                 img_url = photo["src"].get("large2x") or photo["src"].get("large") or photo["src"]["original"]
                 
-                # Nome do arquivo baseado no ID da foto
+                # Nome do arquivo
                 photo_id = photo.get("id", idx)
-                filename = f"pexels_{photo_id}_{idx}.jpg"
+                filename = f"pexels_{photo_id}.jpg"
                 filepath = cache_dir / filename
                 
-                # Se já existe em cache, usa ele
-                if filepath.exists():
+                # Se já existe em cache, reutiliza
+                if filepath.exists() and filepath.stat().st_size > 0:
                     downloaded_paths.append(str(filepath))
+                    print(f"  [pexels] {idx+1}/{len(photos)} (cache)")
                     continue
                 
                 # Baixa a imagem
-                img_response = requests.get(img_url, timeout=15, stream=True)
+                print(f"  [pexels] Baixando {idx+1}/{len(photos)}...")
+                img_response = requests.get(img_url, timeout=20, stream=True)
                 img_response.raise_for_status()
                 
-                # Abre com PIL para validar e converter
+                # Valida e converte
                 img = Image.open(BytesIO(img_response.content))
                 
-                # Converte para RGB (remove alpha se tiver)
+                # Garante RGB
                 if img.mode != 'RGB':
                     img = img.convert('RGB')
                 
-                # Redimensiona se necessário (para economizar espaço)
-                max_size = (1920, 1080)
+                # Redimensiona se muito grande
+                max_size = (1920, 1920)
                 if img.size[0] > max_size[0] or img.size[1] > max_size[1]:
                     img.thumbnail(max_size, Image.Resampling.LANCZOS)
                 
-                # Salva como JPEG
+                # Salva
                 img.save(filepath, 'JPEG', quality=90, optimize=True)
                 downloaded_paths.append(str(filepath))
                 
-                print(f"  [pexels] Baixada imagem {idx+1}/{len(photos)}")
-                
             except Exception as e:
-                print(f"  [pexels] Erro ao baixar imagem {idx}: {e}")
+                print(f"  [pexels] Erro na imagem {idx+1}: {e}")
                 continue
         
         if not downloaded_paths:
-            print(f"[pexels] Nenhuma imagem baixada com sucesso para '{query}'")
+            print(f"[pexels] Nenhuma imagem baixada para '{query}'")
             return []
         
         print(f"[pexels] {len(downloaded_paths)} imagens prontas")
@@ -100,7 +99,7 @@ def pexels_images(query: str, limit: int = 5) -> list[str]:
         print(f"[pexels] Erro na API: {e}")
         return []
     except Exception as e:
-        print(f"[pexels] Erro geral: {e}")
+        print(f"[pexels] Erro: {e}")
         return []
 
 
@@ -110,4 +109,5 @@ def clear_pexels_cache():
     if cache_dir.exists():
         import shutil
         shutil.rmtree(cache_dir)
+        cache_dir.mkdir(parents=True, exist_ok=True)
         print("[pexels] Cache limpo")
