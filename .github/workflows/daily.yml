@@ -43,7 +43,7 @@ jobs:
           ENABLE_TIKTOK_UPLOAD: ${{ secrets.ENABLE_TIKTOK_UPLOAD }}
           TRENDS_REGION: BR
         run: |
-          python main2.py
+          python main_v2.py
 
       - name: List outputs (debug)
         if: always()
