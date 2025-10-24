@@ -1,6 +1,11 @@
 import math, os, io, tempfile, pathlib
 from typing import List, Tuple
 import numpy as np
+import PIL
+from PIL import Image
+if not hasattr(Image, 'ANTIALIAS'):
+    Image.ANTIALIAS = Image.Resampling.LANCZOS
+
 from moviepy.editor import (
     ImageClip,
     ColorClip,
