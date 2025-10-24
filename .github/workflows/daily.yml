@@ -42,6 +42,12 @@ jobs:
           TIKTOK_OPEN_ID: ${{ secrets.TIKTOK_OPEN_ID }}
           ENABLE_TIKTOK_UPLOAD: ${{ secrets.ENABLE_TIKTOK_UPLOAD }}
           TRENDS_REGION: BR
+          # (novas p/ narração + legendas)
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_REGION: us-east-1
+          SUB_LANGS: pt-BR,en,es,fr,it,de,ja   # ajuste a lista como preferir
+          MUSIC_DIR: python/assets/music        # opcional
         run: |
           python main_v2.py
 
