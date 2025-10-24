@@ -9,7 +9,7 @@ from narration import synthesize as tts
 from music import load_background_music
 from pydub import AudioSegment
 
-OUT = pathlib.Path(__file__).parent / "output_v2"
+OUT = pathlib.Path(__file__).parent / "output"
 OUT.mkdir(exist_ok=True)
 
 def build_audio_narration(lines: List[str], lang: str) -> AudioSegment:
