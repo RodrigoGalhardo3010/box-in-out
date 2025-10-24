@@ -1,30 +1,51 @@
-import os, io, math, itertools
-from typing import Optional
+import os, io
 import boto3
 
-# Mapeia idioma -> voz Polly
+# ==========================================================
+# Narração padrão para vídeos do TikTok (voz Camila - pt-BR)
+# ==========================================================
+
+DEFAULT_LANG = 'pt-BR'
+DEFAULT_VOICE = 'Camila'
+
+# Caso futuramente queira vozes adicionais:
 VOICE_BY_LANG = {
-    'pt-BR': 'Camila',   # alternativas: Thiago, Vitoria
-    'pt-PT': 'Ines',
-    'en': 'Joanna',
-    'en-US': 'Joanna',
-    'en-GB': 'Amy',
-    'es': 'Lucia',
-    'es-ES': 'Lucia',
-    'es-MX': 'Mia',
+    'pt-BR': 'Camila',   # Outras opções: 'Thiago', 'Vitoria'
+}
+LANG_CODE_BY_LANG = {
+    'pt-BR': 'pt-BR',
 }
 
 def get_polly():
+    """Retorna cliente boto3 Polly configurado com a região do ambiente."""
     region = os.getenv('AWS_REGION', 'us-east-1')
     return boto3.client('polly', region_name=region)
 
-def synthesize(text: str, lang: str = 'pt-BR', speech_rate: str = 'medium') -> bytes:
-    """Gera áudio TTS via Polly, retornando bytes MP3."""
+def synthesize(text: str, lang: str = DEFAULT_LANG, speech_rate: str = 'medium') -> bytes:
+    """
+    Gera áudio MP3 via AWS Polly.
+    - text: Texto a ser narrado (SSML seguro).
+    - lang: Idioma (padrão pt-BR).
+    - speech_rate: 'slow', 'medium' ou 'fast'.
+    """
     polly = get_polly()
-    voice = VOICE_BY_LANG.get(lang, 'Camila')
-    # Ajuste leve de prosódia por taxa
-    rate_map = {'slow':'85%', 'medium':'100%', 'fast':'115%'}
+    voice = VOICE_BY_LANG.get(lang, DEFAULT_VOICE)
+
+    rate_map = {'slow': '85%', 'medium': '100%', 'fast': '115%'}
     rate = rate_map.get(speech_rate, '100%')
-    ssml = f"""<speak><prosody rate='{rate}'>{text}</prosody></speak>"""
-    resp = polly.synthesize_speech(VoiceId=voice, OutputFormat='mp3', TextType='ssml', Text=ssml, LanguageCode=None)
+    ssml = f"<speak><prosody rate='{rate}'>{text}</prosody></speak>"
+
+    # Monta parâmetros (só envia LanguageCode se existir)
+    kwargs = dict(
+        VoiceId=voice,
+        OutputFormat='mp3',
+        TextType='ssml',
+        Text=ssml,
+    )
+    lang_code = LANG_CODE_BY_LANG.get(lang)
+    if lang_code:
+        kwargs['LanguageCode'] = lang_code
+
+    # Chama o Polly com parâmetros válidos
+    resp = polly.synthesize_speech(**kwargs)
     return resp['AudioStream'].read()
