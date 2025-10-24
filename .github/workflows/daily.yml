@@ -44,3 +44,20 @@ jobs:
           TRENDS_REGION: BR
         run: |
           python main.py
+
+      - name: List outputs (debug)
+        if: always()
+        run: ls -lahR python/output || true
+
+      - name: Upload videos as artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: tiktok-videos-${{ github.run_id }}
+          path: |
+            python/output/**/*.mp4
+            python/output/**/*.srt
+            python/output/**/*.txt
+          if-no-files-found: error
+          retention-days: 7
+
