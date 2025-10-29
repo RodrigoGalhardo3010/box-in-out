@@ -91,7 +91,9 @@ def _bedrock_claude(prompt_text, system_text=None):
 _JSON_OBJ_RE = re.compile(r'\{(?:[^{}]|(?R))*\}', re.DOTALL)
 
 def _extract_json_with_blocks(text: str):
-    # 1) Tenta bloco cercado por ```json ... ```
+    """Extrai o primeiro objeto JSON contendo a chave 'blocks' mesmo que
+    haja prosa antes/depois. Tenta primeiro bloco cercado por ```json ... ```."""
+    # 1) Bloco cercado por ```json ... ```
     fenced = re.search(r"```json\s*(\{.*?\})\s*```", text, re.DOTALL | re.IGNORECASE)
     if fenced:
         cand = fenced.group(1)
@@ -99,15 +101,43 @@ def _extract_json_with_blocks(text: str):
         if isinstance(data, dict) and "blocks" in data:
             return data
 
-    # 2) Primeiro objeto JSON que parseie e contenha "blocks"
-    for m in _JSON_OBJ_RE.finditer(text):
-        cand = m.group(0)
-        try:
-            data = json.loads(cand)
-            if isinstance(data, dict) and "blocks" in data:
-                return data
-        except json.JSONDecodeError:
-            continue
+    # 2) Varredura por chaves balanceadas
+    n = len(text)
+    i = 0
+    while i < n:
+        if text[i] == "{":
+            depth = 0
+            j = i
+            in_str = False
+            esc = False
+            while j < n:
+                ch = text[j]
+                if in_str:
+                    if esc:
+                        esc = False
+                    elif ch == "\\":
+                        esc = True
+                    elif ch == '"':
+                        in_str = False
+                else:
+                    if ch == '"':
+                        in_str = True
+                    elif ch == "{":
+                        depth += 1
+                    elif ch == "}":
+                        depth -= 1
+                        if depth == 0:
+                            cand = text[i:j+1]
+                            try:
+                                data = json.loads(cand)
+                                if isinstance(data, dict) and "blocks" in data:
+                                    return data
+                            except json.JSONDecodeError:
+                                pass
+                            break
+                j += 1
+            i = j
+        i += 1
 
     raise json.JSONDecodeError("JSON com 'blocks' não encontrado", text, 0)
 
