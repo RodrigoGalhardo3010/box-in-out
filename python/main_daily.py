@@ -5,17 +5,21 @@ from core.tts import tts_from_blocks
 from core.media import fetch_broll
 from core.assemble import build_video
 from core.srt import write_srt_from_blocks
+from pathlib import Path
 
 def main():
     date_str = datetime.date.today().isoformat()
-    out_dir = pathlib.Path("python/output") / date_str
+    
+    ROOT = Path(__file__).resolve().parent          # …/python
+    out_dir = ROOT / "output" / date_str            # …/python/output/AAAA-MM-DD
+    music_dir = os.getenv("MUSIC_DIR", str(ROOT / "assets" / "music"))
     out_dir.mkdir(parents=True, exist_ok=True)
 
     provider = "bedrock" if os.getenv("AWS_ACCESS_KEY_ID") else "openai"
     langs = os.getenv("LANGS", "pt-BR,en,es").split(",")
     target_secs = int(os.getenv("VIDEO_SECONDS", "60"))
     theme = os.getenv("THEME_SEED", "autoajuda")
-    music_dir = os.getenv("MUSIC_DIR", "python/assets/music")
+
     branding_handle = os.getenv("BRANDING_HANDLE", "@BoxInandOut")
 
     # 1) Roteiro base PT-BR
