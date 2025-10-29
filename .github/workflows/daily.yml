@@ -37,8 +37,11 @@ jobs:
           THEME_SEED: "autoajuda"
           BRANDING_HANDLE: "@BoxInandOut"
           MUSIC_DIR: "python/assets/music"
+          PYTHONPATH: ${{ github.workspace }}/python
         run: |
-          python main_daily.py
+          python -c "import os,sys,glob; print('cwd=',os.getcwd()); print('has_core_dir=',os.path.isdir('core')); print('files=',sorted(glob.glob('*'))); print('PYTHONPATH=',os.getenv('PYTHONPATH')); print('sys.path[0]=',sys.path[0])"
+          python -m main_daily
+
 
       - name: List outputs (debug)
         if: always()
