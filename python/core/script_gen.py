@@ -88,12 +88,11 @@ def _bedrock_claude(prompt_text, system_text=None):
 # Parsing robusto de JSON e fallbacks
 # ======================================================================
 
-_JSON_OBJ_RE = re.compile(r'\{(?:[^{}]|(?R))*\}', re.DOTALL)
-
 def _extract_json_with_blocks(text: str):
-    """Extrai o primeiro objeto JSON contendo a chave 'blocks' mesmo que
-    haja prosa antes/depois. Tenta primeiro bloco cercado por ```json ... ```."""
-    # 1) Bloco cercado por ```json ... ```
+    """Extrai o primeiro objeto JSON contendo a chave 'blocks' mesmo
+    que haja prosa antes/depois. Evita regex recursiva; usa varredura
+    por chaves balanceadas e respeita strings/escapes."""
+    # 1) Tenta bloco cercado por ```json ... ```
     fenced = re.search(r"```json\s*(\{.*?\})\s*```", text, re.DOTALL | re.IGNORECASE)
     if fenced:
         cand = fenced.group(1)
@@ -101,7 +100,7 @@ def _extract_json_with_blocks(text: str):
         if isinstance(data, dict) and "blocks" in data:
             return data
 
-    # 2) Varredura por chaves balanceadas
+    # 2) Varredura manual por chaves balanceadas
     n = len(text)
     i = 0
     while i < n:
@@ -205,7 +204,7 @@ def generate_script(theme=DEFAULT_THEME, provider="bedrock"):
         else:
             return _fallback_script(theme)
     except Exception:
-        # falha geral na chamada
+        # Falha geral na chamada
         if os.getenv("OPENAI_API_KEY"):
             try:
                 content = _openai_chat(
@@ -250,7 +249,6 @@ def translate_blocks(blocks, target_lang, provider="bedrock"):
                  {"role": "user", "content": prompt}]
             )
         else:
-            # sem provedor disponível: retorna o original
             out = text
     except Exception:
         if os.getenv("OPENAI_API_KEY"):
