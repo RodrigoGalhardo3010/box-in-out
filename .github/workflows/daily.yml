@@ -1,7 +1,7 @@
 name: Daily TikTok Videos
 on:
   schedule:
-    - cron: '0 12 * * *'   # 12:00 UTC = 09:00 BRT
+    - cron: '0 12 * * *'  # 12:00 UTC =~ 09:00 BRT
   workflow_dispatch:
 
 jobs:
@@ -25,33 +25,18 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Restore GCP key file
-        working-directory: python
-        env:
-          GCP_KEY_JSON: ${{ secrets.GCP_KEY_JSON }}
-        run: |
-          echo "$GCP_KEY_JSON" > key.json
-          echo "GOOGLE_APPLICATION_CREDENTIALS=$(pwd)/key.json" >> $GITHUB_ENV
-
       - name: Run daily generator (1 video, 3 narrations + 3 SRT)
         working-directory: python
         env:
-          # APIs
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}         # ou use Bedrock (ver abaixo)
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          AWS_REGION: us-east-1
-
-          # B-roll e música
+          AWS_REGION: ${{ secrets.AWS_REGION }}
           PEXELS_KEY: ${{ secrets.PEXELS_KEY }}
-          MUSIC_DIR: python/assets/music
-
-          # Saída e controle
           VIDEO_SECONDS: "60"
           LANGS: "pt-BR,en,es"
-          THEME_SEED: "autoajuda"          # tema macro
-          ENABLE_TIKTOK_UPLOAD: "false"     # postagem manual
-
+          THEME_SEED: "autoajuda"
+          BRANDING_HANDLE: "@BoxInandOut"
+          MUSIC_DIR: "python/assets/music"
         run: |
           python main_daily.py
 
