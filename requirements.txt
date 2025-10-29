@@ -1,0 +1,8 @@
+boto3==1.34.162
+botocore==1.34.162
+moviepy==1.0.3
+Pillow==10.4.0
+requests==2.32.3
+pydub==0.25.1
+soundfile==0.12.1
+numpy==1.26.4
