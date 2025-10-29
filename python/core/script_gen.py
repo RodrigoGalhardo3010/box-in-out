@@ -34,13 +34,14 @@ SYSTEM_PT = (
     "Inclua um CTA sutil no último bloco."
 )
 
+# ATENÇÃO: chaves do exemplo JSON precisam ser ESCAPADAS ({{ }}) para não colidirem com str.format
 PROMPT_PT = (
     "Crie um roteiro ORIGINAL de autoajuda com o tema: \"{theme}\".\n"
     "- Duração alvo: ~60s de narração.\n"
     "- 6 a 8 blocos; cada bloco com 1–2 frases curtas.\n"
     "- Proíba listas numeradas, markdown, emojis e comentários.\n"
     "- SAÍDA: SOMENTE JSON MINIFICADO no formato:\n"
-    "{\"language\":\"pt-BR\",\"blocks\":[{\"text\":\"...\"}]}\n"
+    "{{\"language\":\"pt-BR\",\"blocks\":[{{\"text\":\"...\"}}]}}\n"
 )
 
 # ======================================================================
